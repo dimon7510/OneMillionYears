@@ -49,14 +49,14 @@ public class GameObjectCollection {
 	
 	
 	///Declaring stone and Arrays of stone entities and stone SceneNodes
-	protected GameObject stoneArray [] = new Stone [AmountOfStones];
-	protected Entity [] stoneEntityArray = new Entity [AmountOfStones];
-	protected SceneNode [] stoneNodeArray = new SceneNode[AmountOfStones];
+	protected Vector<GameObject> stoneVector  = new Vector<GameObject>();
+	protected Vector<Entity> stoneEntityVector = new Vector<Entity>();
+	protected  Vector<SceneNode> stoneNodeVector = new Vector<SceneNode>();
 	   
 	//declaring spear and arrays of Spear entities and array of Spear SceneNodes(in our case 2 dolphins)
-	protected GameObject spearArray[] = new Spear [AmountOfSpears];
-	protected Entity [] spearEntityArray = new Entity [AmountOfSpears];
-	protected SceneNode [] spearNodeArray = new SceneNode [AmountOfSpears];
+	protected Vector<GameObject> spearVector = new Vector<GameObject>();
+	protected Vector<Entity>  spearEntityVector = new Vector<Entity>();
+	protected Vector<SceneNode> spearNodeVector = new Vector<SceneNode>();
 	   
 	///Declaring Plant and arrays of plant entities and Plant SceneNodes
 	protected GameObject plantArray [] = new Plant [AmountOfPlants] ;
@@ -96,22 +96,17 @@ public class GameObjectCollection {
         for (int i =0; i<AmountOfStones; i++)
         {
         		//making array of stones
-        	stoneArray[i] = new Stone (StoneFile);
+        	stoneVector.add(new Stone (StoneFile));
             	//Create entity array for stones 
-        	stoneEntityArray[i] = sm.createEntity("myStoneEnt"+i,StoneFile );
-        	stoneEntityArray[i].setPrimitive(Primitive.TRIANGLES);
-        		//create texture for stone entities
-        	Texture stoneText = sm.getTextureManager().getAssetByPath("stone2.jpg");   
-        	TextureState tstate = (TextureState) sm.getRenderSystem().createRenderState(RenderState.Type.TEXTURE);   
-        	tstate.setTexture(stoneText);   
-        	stoneEntityArray[i].setRenderState(tstate); 
+        	stoneEntityVector.add(sm.createEntity("myStoneEnt"+i,StoneFile ));
+        	stoneEntityVector.lastElement().setPrimitive(Primitive.TRIANGLES);
             	//Create Node array for Stones
-        	stoneNodeArray[i] = stoneParentNode.createChildSceneNode(stoneEntityArray[i].getName() + "Node"+i);
-        	stoneNodeArray[i].attachObject(stoneEntityArray[i]);
+        	stoneNodeVector.add(stoneParentNode.createChildSceneNode(stoneEntityVector.lastElement().getName() + "Node"+i));
+        	stoneNodeVector.lastElement().attachObject(stoneEntityVector.lastElement());
             	//Set locations and size for stone Nodes
-        	stoneNodeArray[i].setLocalPosition(stoneArray[i].getLocation() );
-        	float stoneScale = ((Stone) stoneArray[i]).getSize();
-        	stoneNodeArray[i].scale(stoneScale, stoneScale, stoneScale );
+        	stoneNodeVector.lastElement().setLocalPosition(stoneVector.lastElement().getLocation() );
+        	float stoneScale = ((Stone) stoneVector.lastElement()).getSize();
+        	stoneNodeVector.lastElement().scale(stoneScale, stoneScale, stoneScale );
         }
         
         //Making arrays of Spears----------------------------------------
@@ -120,15 +115,15 @@ public class GameObjectCollection {
         for (int i=0; i<AmountOfSpears;i++)
         {
              	//making array of spears
-        	spearArray[i] = new Spear(SpearFile);
+        	spearVector.add( new Spear(SpearFile));
         		//making Entity array for Spears
-        	spearEntityArray[i] = sm.createEntity("mySpearEnt"+i,SpearFile );
-        	spearEntityArray[i].setPrimitive(Primitive.TRIANGLES);
+        	spearEntityVector.add(sm.createEntity("mySpearEnt"+i,SpearFile ));
+        	spearEntityVector.lastElement().setPrimitive(Primitive.TRIANGLES);
         		//Making Node Array for Spears
-        	spearNodeArray[i] = spearParentNode.createChildSceneNode(spearEntityArray[i].getName() + "Node"+i);
-        	spearNodeArray[i].attachObject(spearEntityArray[i]);
+        	spearNodeVector.add(spearParentNode.createChildSceneNode(spearEntityVector.lastElement().getName() + "Node"+i));
+        	spearNodeVector.lastElement().attachObject(spearEntityVector.lastElement());
         		//Set locations for spears Nodes
-        	spearNodeArray[i].setLocalPosition(spearArray[i].getLocation() );
+        	spearNodeVector.lastElement().setLocalPosition(spearVector.lastElement().getLocation() );
         }
         
         /*

@@ -23,7 +23,7 @@ public class MoveBackwardAction extends AbstractInputAction
       localTimeElapsed = time/1000.0f;
       localSpeed = ( (Player)game.gameColl.localPlayer).getSpeed();
     
-      if ( ( (Player)game.gameColl.localPlayer).isAlive()&& game.GameStart )
+      if ( ( (Player)game.gameColl.localPlayer).isAlive()&& MillionYears.GameStart )
       {
     	  game.gameColl.localPlayerNode.moveBackward(localTimeElapsed*localSpeed);
     	  game.updateVerticalPosition();

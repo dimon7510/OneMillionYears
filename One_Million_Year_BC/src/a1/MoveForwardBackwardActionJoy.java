@@ -22,7 +22,7 @@ public class MoveForwardBackwardActionJoy extends AbstractInputAction
       localTimeElapsed = time/1000.0f;
       localSpeed = ( (Player)game.gameColl.localPlayer).getSpeed();
       //if player is alive
-      if ( ( (Player)game.gameColl.localPlayer).isAlive() && game.GameStart)
+      if ( ( (Player)game.gameColl.localPlayer).isAlive() && MillionYears.GameStart)
       {
     	  	//move forward by Joystick
     	  if (e.getValue() < -0.3)

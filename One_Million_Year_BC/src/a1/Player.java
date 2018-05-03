@@ -15,6 +15,7 @@ public class Player extends GameObject{
 	private boolean alive;
 	private boolean male;
 	private boolean walking;
+	private boolean throwing;
 	private int activeWeapon;
 	
 	//variables for scripting
@@ -44,6 +45,7 @@ public class Player extends GameObject{
 		setStones(0);
 		setActiveWeapon(activeWeapon);
 		setWalking(false);
+		setThrowing(false);
 	}
    
    public Player(Vector3f positionVect, String s, boolean male, int activeWeapon)
@@ -64,6 +66,7 @@ public class Player extends GameObject{
 		setStones(0);
 		setActiveWeapon(activeWeapon);
 		setWalking(false);
+		setThrowing(false);
 	}
 
    
@@ -86,6 +89,7 @@ public class Player extends GameObject{
 		setStones(0);
 		setActiveWeapon(activeWeapon);
 		setWalking(false);
+		setThrowing(false);
 	}
 
    
@@ -139,7 +143,6 @@ public class Player extends GameObject{
          default: weaponStr = "Hand";
          break;
 		}
-		
 		this.dispStr = ".  Score = "+scoreStr+".  Life = "+lifeStr+". Spears = "+spearsStr+". Stones = "+stonesStr+". Weapon: "+weaponStr+"\n     "+statusStr;
 	}
 		
@@ -216,6 +219,14 @@ public class Player extends GameObject{
 
 	public void setWalking(boolean walking) {
 		this.walking = walking;
+	}
+
+	public boolean isThrowing() {
+		return throwing;
+	}
+
+	public void setThrowing(boolean throwing) {
+		this.throwing = throwing;
 	}
 
 }

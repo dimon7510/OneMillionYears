@@ -316,7 +316,7 @@ public class MillionYears extends VariableFrameRateGame  {
 			if (elapsTime>halfSec)
 			{
 				halfSec+=0.5f;
-				//checkStopMoving();
+				checkStopMoving();
 			}
 				
 			//check if player have chosen avatar then start game
@@ -327,15 +327,21 @@ public class MillionYears extends VariableFrameRateGame  {
 				rs = (GL4RenderSystem) engine.getRenderSystem();
 				int windowHeight = (int) (rs.getCanvas().getHeight() * 1.05);
 				int windowWidth = rs.getCanvas().getWidth();
+				((Player)gameColl.localPlayer).setDispStr();
 				rs.setHUD( elapsTimeStr + ((Player)gameColl.localPlayer).getDispStr(), windowWidth / 100, windowHeight / 70);
 				   
-				//Check collision-----------------------
-				// collisionDetection(engine);
+				
 			      
 				//game over if Player is not dead then process inputs--------------------
 				if( ((Player)gameColl.localPlayer).isAlive())
 				{
 					im.update(updateTime);
+					
+					//Check collision-----------------------
+					collisionDetection(engine);
+					
+					//Animation update
+					gameColl.localPlayerEntity.update();
 				}
 				else { ((Player)gameColl.localPlayer).setStatusStr("  GAME OVER - you died.");}
 				      
@@ -345,8 +351,7 @@ public class MillionYears extends VariableFrameRateGame  {
 					orbitController.updateCameraPosition();
 				}
 				      
-				//Animation update
-				gameColl.localPlayerEntity.update();	
+					
 			} 
 			else
 			{	rs = (GL4RenderSystem) engine.getRenderSystem();
@@ -359,27 +364,26 @@ public class MillionYears extends VariableFrameRateGame  {
 			im.update(updateTime);
 		}
 
-	    /*
+	    
 	    //Function checks if Moving Buttons are released and stops moving animation
 	    protected void checkStopMoving()
 	    {
-	    	if ( this.GameStart && ((Player)this.gameColl.localPlayer).isWalking() )
+	    	if ( MillionYears.GameStart && ((Player)this.gameColl.localPlayer).isWalking() )
 	    	{
 	    			//checking if all movable buttons are released
-	    		if ( ((Component) net.java.games.input.Component.Identifier.Key.A).getPollData() <0.1f 
-	    			&&((Component) net.java.games.input.Component.Identifier.Key.W).getPollData() <0.1f
-	    			&&((Component) net.java.games.input.Component.Identifier.Key.D).getPollData() <0.1f
-	    			&&((Component) net.java.games.input.Component.Identifier.Key.S).getPollData() <0.1f
-	    			&& Math.abs((( (Component) net.java.games.input.Component.Identifier.Axis.X).getPollData() ))<0.3f
-	    			&& Math.abs((( (Component) net.java.games.input.Component.Identifier.Axis.Y).getPollData() ))<0.3f
-	    			)
+	    		if ( Math.abs(im.getGamepadController(1).getComponent(net.java.games.input.Component.Identifier.Axis.X).getPollData()) < 0.1f
+	    				&& Math.abs(im.getGamepadController(1).getComponent(net.java.games.input.Component.Identifier.Axis.Y).getPollData()) < 0.1f
+	    				&& im.getKeyboardController().getComponent(net.java.games.input.Component.Identifier.Key.A).getPollData()==0.0f
+	    				&& im.getKeyboardController().getComponent(net.java.games.input.Component.Identifier.Key.W).getPollData()==0.0f
+	    				&& im.getKeyboardController().getComponent(net.java.games.input.Component.Identifier.Key.D).getPollData()==0.0f
+	    				&& im.getKeyboardController().getComponent(net.java.games.input.Component.Identifier.Key.S).getPollData()==0.0f)
 	    		{
 	    			this.gameColl.localPlayerEntity.stopAnimation();
 	    			((Player)this.gameColl.localPlayer).setWalking(false);
 	    		}
 	    	}	
 	    }
-	*/
+	
 
 
 
@@ -402,6 +406,8 @@ public class MillionYears extends VariableFrameRateGame  {
 	      turnRightAction = new TurnRightAction(this);
 	      turnLeftRightActionJoy = new TurnLeftRightActionJoy(this);
 	      stopMovementAction = new StopMovementAction(this);
+	      fireAction = new FireAction(this);
+	      switchWeaponAction = new SwitchWeaponAction(this);
 	      makeMaleAvatarAction = new MakeMaleAvatarAction(this, eng);
 	      makeFemaleAvatarAction = new MakeFemaleAvatarAction(this, eng);
 	    
@@ -444,6 +450,14 @@ public class MillionYears extends VariableFrameRateGame  {
 	      im.associateAction(kbName, net.java.games.input.Component.Identifier.Key.F,
 	      makeFemaleAvatarAction, InputManager.INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 	      
+	      //attach SwitchWeapon Action action from keyboard
+	      im.associateAction(kbName, net.java.games.input.Component.Identifier.Key.RETURN,
+	      switchWeaponAction, InputManager.INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+	      
+	      //attach Fire Action action from keyboard
+	      im.associateAction(kbName, net.java.games.input.Component.Identifier.Key.SPACE,
+	      fireAction, InputManager.INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+	      
 /*
 	         //attach TurnUp action "pitch"
 	      im.associateAction(kbName,
@@ -484,27 +498,25 @@ public class MillionYears extends VariableFrameRateGame  {
 	         im.associateAction(gpName, net.java.games.input.Component.Identifier.Axis.RX,
 	         turnLeftRightActionJoy, InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 	         
-	         	//attach MakeMaleAvatar Action action from keyboard
+	         	//attach MakeMaleAvatar Action action from gamepad
 		     im.associateAction(gpName, net.java.games.input.Component.Identifier.Button._3,
 		     makeMaleAvatarAction, InputManager.INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 		      
-		      	//attach MakeFemaleAvatar Action action from keyboard
+		      	//attach MakeFemaleAvatar Action action from gamepad
 		     im.associateAction(gpName,net.java.games.input.Component.Identifier.Button._2,
 		     makeFemaleAvatarAction, InputManager.INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		     
+		 		//attach MakeFemaleAvatar Action action from gamepad
+		     im.associateAction(gpName,net.java.games.input.Component.Identifier.Button._2,
+		     makeFemaleAvatarAction, InputManager.INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		     
+		 		//attach Switch Action
+		     im.associateAction(gpName,net.java.games.input.Component.Identifier.Button._5,
+		     switchWeaponAction, InputManager.INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 	      
-	         /*
-	          //attach TurnUpDownActionJoy
-	         im.associateAction(gpName,
-	         net.java.games.input.Component.Identifier.Axis.RY,
-	         turnUpDownActionJoy,
-	         InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-
-	           //attach toggle action on button A of joystic
-	         im.associateAction(gpName,
-	         net.java.games.input.Component.Identifier.Button._5,
-	         toggleAction,
-	         InputManager.INPUT_ACTION_TYPE.ON_PRESS_ONLY);
-			*/
+		     //attach Fire Action
+		     im.associateAction(gpName,net.java.games.input.Component.Identifier.Button._0,
+		     fireAction, InputManager.INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 	      }
 	      
 	   }
@@ -557,40 +569,63 @@ public class MillionYears extends VariableFrameRateGame  {
 	   return (float)differense.lengthSquared();
 	}
 
-	   /*
+	   
 	   void collisionDetection(Engine myEngine)
 	   {
-	      if (!dolphinToggle)
-	      {
-	         Iterator <GameObject> trashCanIter = trashCanVector.iterator();
-	         Iterator <ManualObject> trashCanObjIter = trashCanObjVector.iterator();
-	         Iterator <SceneNode> trashCanNodeIter = trashCanNodeVector.iterator();
-	         TrashCan trashCanCurrent;
-	         ManualObject trashCanObjCurrent;
-	         SceneNode trashCanNodeCurrent;
+	      
+	         Iterator <GameObject> stoneIter = this.gameColl.stoneVector.iterator();
+	         Iterator <Entity> stoneEntityIter = this.gameColl.stoneEntityVector.iterator();
+	         Iterator <SceneNode> stoneNodeIter = this.gameColl.stoneNodeVector.iterator();
+	         Stone stoneCurrent;
+	         Entity stoneEntityCurrent;
+	         SceneNode stoneNodeCurrent;
+	         
+	         Iterator <GameObject> spearIter = this.gameColl.spearVector.iterator();
+	         Iterator <Entity> spearEntityIter = this.gameColl.spearEntityVector.iterator();
+	         Iterator <SceneNode> spearNodeIter = this.gameColl.spearNodeVector.iterator();
+	         Spear spearCurrent;
+	         Entity spearEntityCurrent;
+	         SceneNode spearNodeCurrent;
 
-	   		while ( trashCanObjIter.hasNext() ) 
+	   		while ( stoneEntityIter.hasNext() ) 
 	   		{
-	            trashCanCurrent = (TrashCan)trashCanIter.next();
-	   			trashCanObjCurrent= trashCanObjIter.next();
-	            trashCanNodeCurrent= trashCanNodeIter.next();
+	   			stoneCurrent = (Stone)stoneIter.next();
+	   			stoneEntityCurrent= stoneEntityIter.next();
+	   			stoneNodeCurrent= stoneNodeIter.next();
 	    
-	            if(OneMillonYearsBC_Game.distance(getCamera(),trashCanNodeCurrent)<0.5f)
+	            if(MillionYears.distance(this.gameColl.localPlayerNode,stoneNodeCurrent)<0.5f)
 	            {
-	               score+=10;
-	               trashCanIter.remove();
-	               trashCanObjIter.remove();
-	               myEngine.getSceneManager().destroySceneNode( trashCanNodeCurrent);
-	               trashCanNodeIter.remove();
-	               System.out.println("Trash cans were removed.");
+	               ((Player)this.gameColl.localPlayer).setStones( ((Player)this.gameColl.localPlayer).getStones()+1);
+	               stoneIter.remove();
+	               stoneEntityIter.remove();
+	               myEngine.getSceneManager().destroySceneNode( stoneNodeCurrent);
+	               stoneNodeIter.remove();
+	               System.out.println("Stone picked");
+	               return;
+	            }
+	   		}
+	   		
+	   		while ( spearEntityIter.hasNext() ) 
+	   		{
+	   			spearCurrent = (Spear)spearIter.next();
+	   			spearEntityCurrent= spearEntityIter.next();
+	   			spearNodeCurrent= spearNodeIter.next();
+	    
+	            if(MillionYears.distance(this.gameColl.localPlayerNode,spearNodeCurrent)<0.5f)
+	            {
+	               ((Player)this.gameColl.localPlayer).setSpears( ((Player)this.gameColl.localPlayer).getSpears()+1);
+	               spearIter.remove();
+	               spearEntityIter.remove();
+	               myEngine.getSceneManager().destroySceneNode( spearNodeCurrent);
+	               spearNodeIter.remove();
+	               System.out.println("spear picked");
 	               return;
 	            }
 	   		}
 				
 	         return;
-		   }
 	   }
-*/
+
 
 	//Update Vertical position of Player according to Height mam-----------------------
 	protected void updateVerticalPosition()

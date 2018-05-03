@@ -27,14 +27,12 @@ public class TurnLeftRightActionJoy extends AbstractInputAction{
 	      if (e.getValue() < -0.3)
 	      {
 	    	  	//turning dolphin
-			  System.out.println("turn dolphin1 left by joystick");
 			  rotAmt = Degreef.createFrom(localTimeElapsed);
 			  rotAmtFloat = localTimeElapsed;
 	      }
 	      
 	      if (e.getValue() > 0.3)
 	      {
-	         System.out.println("turn dolphin1 right by joystick");
 	         rotAmt = Degreef.createFrom(-localTimeElapsed);
 	         rotAmtFloat = -localTimeElapsed;
 	      }
