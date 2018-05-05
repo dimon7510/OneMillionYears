@@ -2,7 +2,7 @@
 	var stones = 100;
 	var spears = 10;
 	var plants = 100;
-	var rocks = 15;
+	var rocks = 100;
 	
 	/*Dimentions of objects*/
 	var stoneSize = 0.05;

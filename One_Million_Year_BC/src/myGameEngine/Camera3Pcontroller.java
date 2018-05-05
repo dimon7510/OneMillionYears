@@ -1,5 +1,6 @@
 package myGameEngine;
 
+import net.java.games.input.Event;
 import ray.input.InputManager;
 import ray.input.action.AbstractInputAction;
 import ray.input.action.Action;
@@ -18,6 +19,7 @@ public class Camera3Pcontroller {
 	private float radius; //distance between camera and target
 	private Vector3 targetPos; //target’s position in the world
 	private Vector3 worldUpVec;
+	public Action orbitElevationAction,orbitRadiusAction;
 	
 	public Camera3Pcontroller(Camera cam, SceneNode camN, SceneNode targ, String controllerName, InputManager im)
 	{ 	
@@ -47,6 +49,8 @@ public class Camera3Pcontroller {
 
 		//attach orbitAroundAction
 	private void setupInput(InputManager im, String controllerName) {
+		System.out.println(" Setup Input entered"); 
+		
 		/*
 		//attach orbitAroundAction
 		Action orbitAroundAction = new OrbitAroundAction();
@@ -54,15 +58,18 @@ public class Camera3Pcontroller {
 		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);	
 		*/
 		//attach orbitElevationAction
-		Action orbitElevationAction = new OrbitElevationAction();
+		orbitElevationAction = new OrbitElevationAction();
+		/*
 		im.associateAction(controllerName, net.java.games.input.Component.Identifier.Axis.RY, orbitElevationAction,
 		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);	
+		*/
 		
 		//attach orbitRadiusAction
-		Action orbitRadiusAction = new OrbitRadiusAction();
+		orbitRadiusAction = new OrbitRadiusAction();
+		/*
 		im.associateAction(controllerName, net.java.games.input.Component.Identifier.Axis.Z, orbitRadiusAction,
 		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);	
-		
+		*/
 	}
 	
 	public float getCameraAzimuth() {
@@ -100,8 +107,9 @@ public class Camera3Pcontroller {
 	{ 
 		float localTimeElapsed = 0.0f;
 		// Moves the camera up-down around the target (changes camera altitude).
-		public void performAction(float time, net.java.games.input.Event evt)
+		public void performAction(float time,Event evt)
 		{ 
+			System.out.println(" Elevation changed"); 
 			localTimeElapsed = time/50.0f;
 			float rotAmount ;
 			if (evt.getValue() < -0.2 && cameraElevation>-50.0 && cameraElevation<10.0)
@@ -123,8 +131,9 @@ public class Camera3Pcontroller {
 	{ 
 		 float localTimeElapsed = 0.0f;
 		// Moves the camera closer-further to the target (changes camera radius).
-		public void performAction(float time, net.java.games.input.Event evt)
+		public void performAction(float time, Event evt)
 		{ 
+			System.out.println(" Radius changed"); 
 			localTimeElapsed = time/1000.0f;
 			float moveAmount ;
 			if (evt.getValue() < -0.2 && radius>0.5)

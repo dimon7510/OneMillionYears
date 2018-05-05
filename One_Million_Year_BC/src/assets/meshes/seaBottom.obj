@@ -1,0 +1,12 @@
+# Blender v2.79 (sub 0) OBJ File: 'seaBottom.blend'
+# www.blender.org
+mtllib seaBottom.mtl
+o Plane
+v 10.164073 -2.319714 -10.947836
+v -9.942891 -2.319714 -10.947836
+v 10.164073 -2.319714 9.159128
+v -9.942891 -2.319714 9.159128
+vn 0.0000 -1.0000 0.0000
+usemtl Material.001
+s off
+f 1//1 3//1 4//1 2//1

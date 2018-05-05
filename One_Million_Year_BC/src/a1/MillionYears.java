@@ -68,6 +68,7 @@ import ray.rage.scene.SkyBox;
 import ray.rage.scene.Tessellation;
 import ray.rage.scene.Camera.Frustum.Projection;
 import ray.rage.scene.controllers.RotationController;
+import ray.rage.scene.controllers.TranslationController;
 import ray.rage.util.BufferUtil;
 import ray.rml.Degreef;
 import ray.rml.Vector3;
@@ -289,6 +290,7 @@ public class MillionYears extends VariableFrameRateGame
 	    protected void setupOrbitCameras(Engine eng, SceneManager sm) {
 	    	
 	    	//creating and attaching orbit camera moved by joystick or keyboard
+	    	im = new GenericInputManager();
 	    	SceneNode localPlayerNode = gameColl.playerAimNode;
 	    	String localPlayerControl;
 	    	if (im.getFirstGamepadName()!=null)
@@ -361,11 +363,7 @@ public class MillionYears extends VariableFrameRateGame
 	        plightNode.attachObject(plight);
 	        plightNode.translate(0.0f, 20.0f, 0.0f);
 
-	        RotationController rc = new RotationController(Vector3f.createUnitVectorY(), .01f);
-	        //rc.addNode(earthNode);
-	        sm.addController(rc);
-	        
-		    
+
 	    	//setup Javascript -----------------------------------
 	    		// prepare script engine
 	    	ScriptEngineManager factory = new ScriptEngineManager();
@@ -403,7 +401,7 @@ public class MillionYears extends VariableFrameRateGame
 	    	
 	    	//Initializing GameWorld (Collection of all obejcts and players)------------
 	    	 gameColl = new GameObjectCollection(eng, sm, male);
-	    	
+	   	
 	    	//setup lobby avatars
 	    	sm = eng.getSceneManager();
 			//create male and female Avatar entities  for Lobby
@@ -424,23 +422,33 @@ public class MillionYears extends VariableFrameRateGame
 			lobbyPlayerFemaleNode.setLocalPosition(this.gameColl.localPlayer.getLocation().add(-0.7f, 0.0f, 0.0f));
 			lobbyPlayerFemaleNode.scale(scale, scale, scale);
 			lobbyPlayerFemaleNode.yaw(Degreef.createFrom(180.0f));
-			
+	
 			//making spear and stone in avatar's hand
 				//making stone in hand
 			stoneWeaponEnt = sm.createEntity("stoneWeaponEntity", "stone2.obj"); 
 			stoneWeaponNode = gameColl.localPlayerNode.createChildSceneNode("stoneWeapoNode");
 			stoneWeaponNode.attachObject(stoneWeaponEnt);
-			stoneWeaponNode.setLocalPosition(-1.0f,this.gameColl.aimHeight/2.3f,0.0f);
+			float stoneScale = Stone.size*4.0f;
+			stoneWeaponNode.scale(stoneScale, stoneScale, stoneScale );
+			stoneWeaponNode.setLocalPosition(-1.2f,this.gameColl.aimHeight/2.3f,0.0f);
+			stoneWeaponEnt.setVisible(false);
+			
 		
 				//making spear in hand
 			spearWeaponEnt = sm.createEntity("spearWeaponEntity", "cone.obj"); 
 			spearWeaponNode = gameColl.localPlayerNode.createChildSceneNode("spearWeapoNode");
 			spearWeaponNode.attachObject(spearWeaponEnt);
-			spearWeaponNode.setLocalPosition(-1.0f,this.gameColl.aimHeight/2.3f,0.0f);
-		
+			spearWeaponNode.setLocalPosition(-1.2f,this.gameColl.aimHeight/2.3f,0.0f);
+			spearWeaponEnt.setVisible(false);
 			
+			//translation controller to weapon in hand (used when throw)
+			TranslationController rc = new TranslationController(Vector3f.createUnitVectorY(), 100.0f,2000.0f);
+		    rc.addNode(stoneWeaponNode);
+		    sm.addController(rc);
+		
+			setupOrbitCameras(eng, sm);
 	        setupInputs(eng);
-	        setupOrbitCameras(eng, sm);
+	        
 	        
 	    	
 	    }
@@ -656,6 +664,14 @@ public class MillionYears extends VariableFrameRateGame
 	         im.associateAction(gpName, net.java.games.input.Component.Identifier.Axis.RX,
 	         turnLeftRightActionJoy, InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 	         
+	         //attach elevationCamera action
+	         im.associateAction(gpName, net.java.games.input.Component.Identifier.Axis.RY,
+	         orbitController.orbitElevationAction, InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+	         
+	         //attach elevationCamera action
+	         im.associateAction(gpName, net.java.games.input.Component.Identifier.Axis.Z, 
+	         orbitController.orbitRadiusAction, InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);	
+	         
 	         	//attach MakeMaleAvatar Action action from gamepad
 		     im.associateAction(gpName, net.java.games.input.Component.Identifier.Button._3,
 		     makeMaleAvatarAction, InputManager.INPUT_ACTION_TYPE.ON_PRESS_ONLY);
@@ -754,6 +770,8 @@ public class MillionYears extends VariableFrameRateGame
 	            if(MillionYears.distance(this.gameColl.localPlayerNode,stoneNodeCurrent)<0.5f)
 	            {
 	               ((Player)this.gameColl.localPlayer).setStones( ((Player)this.gameColl.localPlayer).getStones()+1);
+	               if( ((Player)this.gameColl.localPlayer).getActiveWeapon()==1)
+	            	   this.stoneWeaponEnt.setVisible(true);
 	               stoneIter.remove();
 	               stoneEntityIter.remove();
 	               myEngine.getSceneManager().destroySceneNode( stoneNodeCurrent);
@@ -772,6 +790,8 @@ public class MillionYears extends VariableFrameRateGame
 	            if(MillionYears.distance(this.gameColl.localPlayerNode,spearNodeCurrent)<0.5f)
 	            {
 	               ((Player)this.gameColl.localPlayer).setSpears( ((Player)this.gameColl.localPlayer).getSpears()+1);
+	               if( ((Player)this.gameColl.localPlayer).getActiveWeapon()==2)
+	            	   this.spearWeaponEnt.setVisible(true);
 	               spearIter.remove();
 	               spearEntityIter.remove();
 	               myEngine.getSceneManager().destroySceneNode( spearNodeCurrent);
