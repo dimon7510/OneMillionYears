@@ -4,6 +4,8 @@ import java.awt.Color;
 import java.awt.DisplayMode;
 import java.awt.GraphicsEnvironment;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
@@ -26,13 +28,23 @@ import net.java.games.input.Component;
 import net.java.games.input.Event;
 
 import myGameEngine.Camera3Pcontroller;
-
+import myGameEngine.GhostAvatar;
+import myGameEngine.GhostNPC;
+import myGameEngine.ProtocolClient;
 import ray.rage.asset.texture.*;
 import ray.rage.util.*;
 import java.awt.geom.*;
+
+import ray.audio.AudioManagerFactory;
+import ray.audio.AudioResource;
+import ray.audio.AudioResourceType;
+import ray.audio.IAudioManager;
+import ray.audio.Sound;
+import ray.audio.SoundType;
 import ray.input.GenericInputManager;
 import ray.input.InputManager;
 import ray.input.action.Action;
+import ray.networking.IGameConnection.ProtocolType;
 import ray.rage.Engine;
 import ray.rage.asset.texture.Texture;
 import ray.rage.game.Game;
@@ -62,7 +74,8 @@ import ray.rml.Vector3;
 import ray.rml.Vector3f;
 import static ray.rage.scene.SkeletalEntity.EndType.*;
 
-public class MillionYears extends VariableFrameRateGame  {
+public class MillionYears extends VariableFrameRateGame  
+{
 	// to minimize variable allocation in update()
 		GL4RenderSystem rs;
 	    float updateTime;
@@ -70,7 +83,6 @@ public class MillionYears extends VariableFrameRateGame  {
 		String elapsTimeStr, dispStr;
 	 	int elapsTimeSec;
 	 	float halfSec = 0.5f;
-	  	
 	   
 	   //game static Logic variables
 	   public static float HeightOfWorld ;
@@ -91,9 +103,11 @@ public class MillionYears extends VariableFrameRateGame  {
 	   //declaring scene nodes
 	   protected SceneNode rootNode, skyBoxNode;
 	   protected SceneNode lobbyPlayerFemaleNode, lobbyPlayerManNode;
+	   protected SceneNode stoneWeaponNode, spearWeaponNode;
 	   
 	   //declaring Entities
 	   protected Entity lobbyPlayerManEntity, lobbyPlayerFemaleEntity;
+	   protected Entity stoneWeaponEnt, spearWeaponEnt;
 	 
 	   
 	   //declaring camera node
@@ -111,19 +125,34 @@ public class MillionYears extends VariableFrameRateGame  {
 	   private Action makeMaleAvatarAction, makeFemaleAvatarAction;
 	   
 	   
+	   //Game's networking variables
+	   private String serverAddress;
+	   private int serverPort;
+	   private ProtocolType serverProtocol;
+	   private ProtocolClient clientProtocol;
+	   private boolean isConnected;
+	   
+	   //Sound
+	   private IAudioManager audioMng;
+	   private Sound walkingSound;
+	   
+	   //gameCollection variable
+	   public Vector<UUID> gameObjectsToRemove;
+	   
 	   //Declaring Javascript variables
 	   protected ScriptEngine jsEngine;
 	   protected File scriptFile;
 	   
-		public MillionYears() 
+		public MillionYears(String serverAddr, int sPort) 
 	    {
 	        super();
+	        this.serverAddress = serverAddr;
+	        this.serverPort = sPort;
+	        this.serverProtocol = ProtocolType.UDP;
 	    }
 		
-
-		
 		public static void main(String[] args) {
-	    	 Game game = new MillionYears();
+	    	 Game game = new MillionYears(args[0], Integer.parseInt(args[1]));
 	        try {
 	            game.startup();
 	            game.run();
@@ -140,6 +169,104 @@ public class MillionYears extends VariableFrameRateGame  {
 			rs.createRenderWindow(new DisplayMode(1000, 700, 24, 60), false);
 		}
 
+		
+	//NETWORKING FUNCTIONS
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~// Ghost NPC //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+	public void addGhostNPCtoGameWorld(GhostNPC npc) throws IOException
+	{
+		SceneManager sceneManager = this.getEngine().getSceneManager();
+		if (npc != null)
+		{
+			Entity ghostE = sceneManager.createEntity(npc.getID().toString(), "cube.obj");
+			ghostE.setPrimitive(Primitive.TRIANGLES);
+			SceneNode ghostN = sceneManager.getRootSceneNode().createChildSceneNode(npc.getID().toString() + "Node");
+			ghostN.attachObject(ghostE);
+			ghostN.setLocalPosition(npc.getPosition());
+			ghostN.setLocalScale(0.5f, 0.5f, 0.5f);
+		}
+	}
+	public void moveGhostNPCAroundGameWorld(GhostNPC npc, Vector3 pos)
+	{
+		npc.getSceneNode().setLocalPosition(pos);
+	}
+		
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~// Ghost Avatar //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+	public void addGhostAvatarToGameWorld(GhostAvatar avatar) throws IOException
+	{
+		SceneManager sceneManager = this.getEngine().getSceneManager();
+    	if (avatar != null)
+    	{
+    		Entity ghostE = sceneManager.createEntity(avatar.getID().toString(), "man2.obj");
+    		avatar.setEntity(ghostE);
+    		ghostE.setPrimitive(Primitive.TRIANGLES);
+    		SceneNode ghostN = sceneManager.getRootSceneNode().createChildSceneNode(avatar.getID().toString() + "Node");
+    		avatar.setNode(ghostN);
+    		ghostN.attachObject(ghostE);
+    		ghostN.setLocalPosition(avatar.getPosition());
+    		//ghostN.setLocalScale(1f, 1f, 1f);
+    		avatar.setNode(ghostN);
+    		avatar.setEntity(ghostE);
+    		avatar.setPosition(ghostN.getLocalPosition());
+    	}
+    }
+    
+    public void moveGhostAvatarAroundGameWorld(GhostAvatar ghostA, Vector3 pos)
+    {
+    	ghostA.getSceneNode().setLocalPosition(pos);
+    }
+    
+    public void removeGhostAvatarFromGameWorld(GhostAvatar ghostID)
+    {
+    	if (ghostID != null)
+    	{
+    		gameObjectsToRemove.add(ghostID.getID());
+    	}
+    }
+    
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~// SetUp Network //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+    public void setupNetworking()
+    {
+    	gameObjectsToRemove = new Vector<UUID>();
+    	isConnected = false;
+    	try
+    	{
+    		clientProtocol = new ProtocolClient(InetAddress.getByName(serverAddress), 
+    				serverPort, serverProtocol, this);
+    	}
+    	catch(UnknownHostException e)
+    	{
+    		e.printStackTrace();
+    	}
+    	catch (IOException e)
+    	{
+    		e.printStackTrace();
+    	}
+    	if (clientProtocol == null)
+    	{
+    		System.out.println("Missing protocol host");
+    	}
+    	else
+    	{
+    		this.setupInputs(this.getEngine());
+    		clientProtocol.sendJoinMessage();
+    	}
+    }
+    
+    public void processNetworking(float elapsTime)
+    {
+    	SceneManager sceneManager = this.getEngine().getSceneManager();
+    	if (clientProtocol != null)
+    	{
+    		clientProtocol.processPackets();
+    	}
+    	Iterator<UUID> iterator = gameObjectsToRemove.iterator();
+    	while(iterator.hasNext())
+    	{
+    		sceneManager.destroySceneNode(iterator.next().toString());
+    	}
+    	gameObjectsToRemove.clear();
+    }
+	
 	//Camera setup Function
 	    @Override
 	    protected void setupCameras(SceneManager sm, RenderWindow rw) {
@@ -172,7 +299,9 @@ public class MillionYears extends VariableFrameRateGame  {
 	    
 	//Scene setup Function----------------------------------------------------------------
 	    @Override
-	    protected void setupScene(Engine eng, SceneManager sm) throws IOException {
+	    protected void setupScene(Engine eng, SceneManager sm) throws IOException 
+	    {	
+	    	isConnected = false;
 	    	
 	    	 //Making SkyBox---------------
 		    Configuration conf = eng.getConfiguration();
@@ -296,6 +425,19 @@ public class MillionYears extends VariableFrameRateGame  {
 			lobbyPlayerFemaleNode.scale(scale, scale, scale);
 			lobbyPlayerFemaleNode.yaw(Degreef.createFrom(180.0f));
 			
+			//making spear and stone in avatar's hand
+				//making stone in hand
+			stoneWeaponEnt = sm.createEntity("stoneWeaponEntity", "stone2.obj"); 
+			stoneWeaponNode = gameColl.localPlayerNode.createChildSceneNode("stoneWeapoNode");
+			stoneWeaponNode.attachObject(stoneWeaponEnt);
+			stoneWeaponNode.setLocalPosition(-1.0f,this.gameColl.aimHeight/2.3f,0.0f);
+		
+				//making spear in hand
+			spearWeaponEnt = sm.createEntity("spearWeaponEntity", "cone.obj"); 
+			spearWeaponNode = gameColl.localPlayerNode.createChildSceneNode("spearWeapoNode");
+			spearWeaponNode.attachObject(spearWeaponEnt);
+			spearWeaponNode.setLocalPosition(-1.0f,this.gameColl.aimHeight/2.3f,0.0f);
+		
 			
 	        setupInputs(eng);
 	        setupOrbitCameras(eng, sm);
@@ -317,6 +459,11 @@ public class MillionYears extends VariableFrameRateGame  {
 			{
 				halfSec+=0.5f;
 				checkStopMoving();
+			}
+			
+			if (isConnected == true)
+			{
+				processNetworking(elapsTime);
 			}
 				
 			//check if player have chosen avatar then start game
@@ -371,16 +518,27 @@ public class MillionYears extends VariableFrameRateGame  {
 	    	if ( MillionYears.GameStart && ((Player)this.gameColl.localPlayer).isWalking() )
 	    	{
 	    			//checking if all movable buttons are released
-	    		if ( Math.abs(im.getGamepadController(1).getComponent(net.java.games.input.Component.Identifier.Axis.X).getPollData()) < 0.1f
-	    				&& Math.abs(im.getGamepadController(1).getComponent(net.java.games.input.Component.Identifier.Axis.Y).getPollData()) < 0.1f
-	    				&& im.getKeyboardController().getComponent(net.java.games.input.Component.Identifier.Key.A).getPollData()==0.0f
+	    		if(im.getGamepadController(1)!=null)
+	    		{
+		    		if ( Math.abs(im.getGamepadController(1).getComponent(net.java.games.input.Component.Identifier.Axis.X).getPollData()) < 0.1f
+		    				&& Math.abs(im.getGamepadController(1).getComponent(net.java.games.input.Component.Identifier.Axis.Y).getPollData()) < 0.1f
+		    				&& im.getKeyboardController().getComponent(net.java.games.input.Component.Identifier.Key.A).getPollData()==0.0f
+		    				&& im.getKeyboardController().getComponent(net.java.games.input.Component.Identifier.Key.W).getPollData()==0.0f
+		    				&& im.getKeyboardController().getComponent(net.java.games.input.Component.Identifier.Key.D).getPollData()==0.0f
+		    				&& im.getKeyboardController().getComponent(net.java.games.input.Component.Identifier.Key.S).getPollData()==0.0f)
+		    		{
+		    			this.gameColl.localPlayerEntity.stopAnimation();
+		    			((Player)this.gameColl.localPlayer).setWalking(false);
+		    		}
+	    		}
+	    		else if ( im.getKeyboardController().getComponent(net.java.games.input.Component.Identifier.Key.A).getPollData()==0.0f
 	    				&& im.getKeyboardController().getComponent(net.java.games.input.Component.Identifier.Key.W).getPollData()==0.0f
 	    				&& im.getKeyboardController().getComponent(net.java.games.input.Component.Identifier.Key.D).getPollData()==0.0f
 	    				&& im.getKeyboardController().getComponent(net.java.games.input.Component.Identifier.Key.S).getPollData()==0.0f)
-	    		{
-	    			this.gameColl.localPlayerEntity.stopAnimation();
-	    			((Player)this.gameColl.localPlayer).setWalking(false);
-	    		}
+			    		{
+			    			this.gameColl.localPlayerEntity.stopAnimation();
+			    			((Player)this.gameColl.localPlayer).setWalking(false);
+			    		}
 	    	}	
 	    }
 	
@@ -396,12 +554,12 @@ public class MillionYears extends VariableFrameRateGame  {
 	      
 	      // build some action objects for doing things in response to user input
 	      quitGameAction = new QuitGameAction(this);
-	      moveForwardAction = new MoveForwardAction(this);
-	      moveForwardBackwardActionJoy = new MoveForwardBackwardActionJoy(this);
-	      moveBackwardAction = new MoveBackwardAction(this);
-	      moveLeftAction = new MoveLeftAction(this);
-	      moveRightAction = new MoveRightAction(this);
-	      moveLeftRightActionJoy = new MoveLeftRightActionJoy(this);
+	      moveForwardAction = new MoveForwardAction(this, clientProtocol);
+	      moveForwardBackwardActionJoy = new MoveForwardBackwardActionJoy(this, clientProtocol);
+	      moveBackwardAction = new MoveBackwardAction(this, clientProtocol);
+	      moveLeftAction = new MoveLeftAction(this, clientProtocol);
+	      moveRightAction = new MoveRightAction(this, clientProtocol);
+	      moveLeftRightActionJoy = new MoveLeftRightActionJoy(this, clientProtocol);
 	      turnLeftAction = new TurnLeftAction(this);
 	      turnRightAction = new TurnRightAction(this);
 	      turnLeftRightActionJoy = new TurnLeftRightActionJoy(this);
@@ -641,26 +799,67 @@ public class MillionYears extends VariableFrameRateGame  {
 		gameColl.localPlayerNode.setLocalPosition(newAvatarPosition);
 	}
 	
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~// Sound //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+	public void setEarParameters(SceneManager sceneManager)
+	{
+		SceneNode player = sceneManager.getSceneNode((this.gameColl.localPlayerNode).toString());
+		Vector3 avDir = player.getWorldForwardAxis();
+		audioMng.getEar().setLocation(player.getWorldPosition());
+		audioMng.getEar().setOrientation(avDir, Vector3f.createFrom(0, 1, 0));
+	}
+	public void initAudio(SceneManager sceneManager)
+	{
+		AudioResource resource1;
+		audioMng = AudioManagerFactory.createAudioManager("ray.audio.joal.JOALAudioManager");
+		if (audioMng.initialize())
+		{
+			System.out.println("Audio Manager has failed to Initialize");
+			return;
+		}
+		resource1 = audioMng.createAudioResource("walking.wav", AudioResourceType.AUDIO_SAMPLE);
+		walkingSound = new Sound(resource1, SoundType.SOUND_EFFECT, 100, true);
+		walkingSound.initialize(audioMng);
+		walkingSound.setMaxDistance(10.0f);
+		walkingSound.setMinDistance(0.5f);
+		walkingSound.setRollOff(5.0f);
+		SceneNode player = sceneManager.getSceneNode((this.gameColl.localPlayerNode).toString());
+		walkingSound.setLocation(player.getWorldPosition());
+		setEarParameters(sceneManager);
+		
+		walkingSound.play();
+	}
+	
 
 //----Getters and Setters---------------------------------
-	public Camera getCamera() {
+	public Camera getCamera() 
+	{
 		return myCamera;
 	}
 
+	public Vector3 getPlayerPosition()
+	{
+		return this.gameColl.localPlayerNode.getWorldPosition();
+	}
 
-	public void setCamera(Camera camera) {
+	public void setCamera(Camera camera) 
+	{
 		this.myCamera = camera;
 	}
 
 
-	public SceneNode getCameraNode() {
+	public SceneNode getCameraNode() 
+	{
 		return cameraNode;
 	}
 
 
-	public void setCameraNode(SceneNode cameraNode) {
+	public void setCameraNode(SceneNode cameraNode) 
+	{
 		this.cameraNode = cameraNode;
 	}
 
-
+	public void setIsConnected(boolean b)
+	{
+		isConnected = b;
+	}
 }

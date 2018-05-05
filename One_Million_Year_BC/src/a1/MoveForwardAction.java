@@ -1,5 +1,6 @@
 package a1;
 
+import myGameEngine.ProtocolClient;
 import net.java.games.input.Event;
 import ray.input.action.AbstractInputAction;
 import ray.input.action.Action;
@@ -12,12 +13,14 @@ public class MoveForwardAction extends AbstractInputAction
    private MillionYears game;
    private float localTimeElapsed;
    private float localSpeed;
-
+   private ProtocolClient clientProtocol;
    //constructor for game and timeInterval
-   public MoveForwardAction(MillionYears g)
-   { game = g;
-   localTimeElapsed = 0.0f;
-   localSpeed = 0.0f;
+   public MoveForwardAction(MillionYears g, ProtocolClient cp)
+   { 
+	   game = g;
+	   localTimeElapsed = 0.0f;
+	   localSpeed = 0.0f;
+	   clientProtocol = cp;
    }
      
    public void performAction(float time, Event e)
@@ -28,6 +31,7 @@ public class MoveForwardAction extends AbstractInputAction
       if ( ( (Player)game.gameColl.localPlayer).isAlive() && game.GameStart )
       {
     	  game.gameColl.localPlayerNode.moveForward(localTimeElapsed*localSpeed);
+    	  clientProtocol.sendMoveMessage(game.gameColl.localPlayerNode.getWorldPosition());
     	  game.updateVerticalPosition();  
             
 	      	//if player is not walking - start walking
@@ -41,7 +45,8 @@ public class MoveForwardAction extends AbstractInputAction
 	    	  System.out.println("should walk");
 	    	  if (((Player)game.gameColl.localPlayer).getActiveWeapon() == 0)
 	    		  localPlayerSEnt.playAnimation( "WalkAnimation", 1.0f, SkeletalEntity.EndType.LOOP, 0);
-	    	  	//else walk with weapon
+	    	  	//else if weapon choosed and has is walk with weapon
+	    	  
 	    	  else  localPlayerSEnt.playAnimation( "WalkWeaponAnimation", 1.0f, SkeletalEntity.EndType.LOOP, 0);	  
 	      }
       }
